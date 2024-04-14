@@ -1,0 +1,4 @@
+first connect to database
+call app.listen()
+app should be in different file
+How error and response. Set standard of sending error and response.
