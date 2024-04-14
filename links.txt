@@ -1,2 +1,3 @@
 Hitesh Chai aur Code = https://github.com/hiteshchoudhary/chai-backend
 Data Modelling of our code = https://app.eraser.io/workspace/YtPqZ1VogxGy1jzIDkzj
+HTTP Notes = https://www.linkedin.com/search/results/content/?keywords=hitesh%20choudhary%20http&sid=V~6&update=urn%3Ali%3Afs_updateV2%3A(urn%3Ali%3Aactivity%3A7130464152002658304%2CBLENDED_SEARCH_FEED%2CEMPTY%2CDEFAULT%2Cfalse)

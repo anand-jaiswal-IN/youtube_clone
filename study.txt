@@ -2,3 +2,5 @@ first connect to database
 call app.listen()
 app should be in different file
 How error and response. Set standard of sending error and response.
+implement cors in app.js file
+implement multer as a middleware

@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema(
   {
     name: {
       type: {
-        first: {
+        firstName: {
           type: String,
           default: 'Buddy',
           lowercase: true,
@@ -14,7 +14,7 @@ const userSchema = new mongoose.Schema(
           min: 3,
           max: 20,
         },
-        last: {
+        lastName: {
           type: String,
           lowercase: true,
           trim: true,
@@ -67,7 +67,7 @@ const userSchema = new mongoose.Schema(
 
 userSchema.pre('save', async function (next) {
   if (this.isModified('password')) {
-    this.password = bcryptjs.hash(this.password, 10);
+    this.password = await bcryptjs.hash(this.password, 10);
   }
   next();
 });
