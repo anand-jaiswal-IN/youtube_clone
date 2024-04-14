@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import bcryptjs from 'bcryptjs';
-import jst from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 
 const userSchema = new mongoose.Schema(
   {
@@ -54,12 +54,16 @@ const userSchema = new mongoose.Schema(
       },
     ],
     avatar: {
-      type: String, // cloudinary image url
-      default: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
+      type: String, // cloudinary image url,
+      default: 'https://avatar.iran.liara.run/public/boy?username=user',
     },
     coverImg: {
       type: String, // cloudinary image url
-      default: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
+      default: 'https://placehold.co/2560x1440.png',
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestaps: true }
@@ -75,7 +79,7 @@ userSchema.methods.isPasswordCorrect = async function (password) {
   return await bcryptjs.compare(password, this.password);
 };
 userSchema.methods.generateAccessToken = function () {
-  return jst.sign(
+  return jwt.sign(
     {
       _id: this._id,
       email: this.email,
@@ -89,7 +93,7 @@ userSchema.methods.generateAccessToken = function () {
   );
 };
 userSchema.methods.generateRefreshToken = function () {
-  return jst.sign(
+  return jwt.sign(
     {
       _id: this._id,
       email: this.email,

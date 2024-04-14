@@ -4,3 +4,7 @@ app should be in different file
 How error and response. Set standard of sending error and response.
 implement cors in app.js file
 implement multer as a middleware
+implement controllers - Real logic building task
+
+-> accessToken - short lived token
+-> refreshToken - long lived token (if user have this token then he/she can call a api and user will be logged in with another new refresh token)
