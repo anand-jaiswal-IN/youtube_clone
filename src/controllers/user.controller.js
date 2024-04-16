@@ -50,26 +50,11 @@ const registerUser = asyncHandler(async (req, res) => {
     );
   }
 
-  let avatar = {};
-  if (!req.file) {
-    avatar.url = 'https://avatar.iran.liara.run/public/boy?username=user';
-  } else {
-    if (req.file.size > 100 * 1000) {
-      throw new ApiError(400, 'Image size should be less than 1 MB');
-    }
-    // upload image to cloudinary
-    avatar = await uploadFile(req.file?.path);
-    if (!avatar) {
-      throw new ApiError(500, 'Something went wrong while uploading avatar');
-    }
-  }
-
   // creating user in database
   const user = await User.create({
     username,
     email,
     password,
-    avatar: avatar.url,
   });
 
   const createdUser = await User.findById(user._id).select(
@@ -177,6 +162,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
 });
 const updateUserDetail = asyncHandler(async (req, res) => {
+  console.log(req.body);
   const { firstName, lastName, gender, bio } = req.body;
   if (!firstName || !lastName || !gender || !bio) {
     throw new ApiError(400, 'Bad Request. Fields are required');
@@ -185,18 +171,15 @@ const updateUserDetail = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Firstname or Lastname is not valid');
   }
   if (!['M', 'F', 'O'].includes(gender)) {
-    throw new ApiError(400, 'Gender is not Correct');
+    throw new ApiError(400, 'Gender Field is not Valid');
   }
-  if (bio.length() < 6) {
-    throw new ApiError(400, 'Bio is Too Short');
-  }
-  if (!bio.length() > 100) {
-    throw new ApiError(400, 'Bio is Too Long');
+  if (bio?.trim().length < 11 || bio?.trim().length > 200) {
+    throw new ApiError(400, 'Bio Field is not valid');
   }
   const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
-      $set: [{ firstName, lastName, gender, bio }],
+      $set: { firstName, lastName, gender, bio },
     },
     { new: true }
   ).select('-password -refreshToken');
@@ -207,7 +190,7 @@ const updateUserDetail = asyncHandler(async (req, res) => {
 const updateUsername = asyncHandler(async (req, res) => {
   const { newUsername, password } = req.body;
   if (!newUsername || !password) {
-    throw new ApiError(400, 'Request with correct credentials');
+    throw new ApiError(400, 'Bad Request. Wrong credentials');
   }
 
   if (!isValidUsername(newUsername)) {
@@ -215,6 +198,9 @@ const updateUsername = asyncHandler(async (req, res) => {
   }
 
   let user = await User.findById(req?.user?._id);
+  if (!(user.username != newUsername)) {
+    throw new ApiError(400, 'Got Same Username');
+  }
   const isPasswordCorrect = user.isPasswordCorrect(password);
   if (!isPasswordCorrect) {
     throw new ApiError(401, 'Password is wrong');
@@ -233,8 +219,11 @@ const updatePassword = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Bad Request. Fields are required.');
   }
   let user = await User.findById(req?.user?._id);
-  if (!user.isPasswordCorrect(oldPassword)) {
+  if (!(await user.isPasswordCorrect(oldPassword))) {
     throw new ApiError(401, 'Old password is wrong');
+  }
+  if ((await user.isPasswordCorrect(newPassword))) {
+    throw new ApiError(400, 'Got same old password');
   }
   if (!validatePassword(newPassword)) {
     throw new ApiError(406, 'Invalid Password');
@@ -258,78 +247,14 @@ const updateAvatar = asyncHandler(async (req, res) => {
   const avatar = await uploadFile(req.file?.path);
   const user = await User.findByIdAndUpdate(
     req.user?._id,
-    { $set: [{ avatar: avatar.url }] },
+    { $set: { avatar: avatar.url } },
     { new: true }
   ).select('-password -refreshToken');
   res
     .status(200)
     .json(new ApiResponse(202, user, 'Avatar updated successfully'));
 });
-const getUserChannelProfile = asyncHandler(async (req, res) => {
-  const { username } = req.params;
-  username = username?.trim();
-  if (!username) {
-    new ApiError(400, 'username is missing');
-  }
 
-  const channel = await User.aggregate([
-    {
-      $match: { username: username?.toLowerCase() },
-    },
-    {
-      $lookup: {
-        from: 'subscriptions',
-        localField: '_id',
-        foreignField: 'channel',
-        as: 'subscribedTo',
-      },
-    },
-    {
-      $lookup: {
-        from: 'subscriptions',
-        localField: '_id',
-        foreignField: 'subscriber',
-        as: 'subscribers',
-      },
-    },
-    {
-      $addFields: {
-        subscriberCount: {
-          $size: '$subscribers',
-        },
-        subscribedToCount: {
-          $size: '$subscribedTo',
-        },
-        isSubscribed: {
-          $cond: {
-            if: { $in: [req.user?._id, '$subscribers.subscriber'] },
-            then: true,
-            else: false,
-          },
-        },
-      },
-    },
-    {
-      $project: {
-        firstName: 1,
-        lastName: 1,
-        bio: 1,
-        gender: 1,
-        username: 1,
-        email: 1,
-        avatar: 1,
-        coverImg: 1,
-        subscriberCount: 1,
-        subscribedToCount: 1,
-        isSubscribed: 1,
-      },
-    },
-  ]);
-  if(!channel?.length){
-    throw new ApiError(404, "Channel doesn't exists")
-  }
-  res.status(200).json(new ApiResponse(200, channel[0], "User channel fetched successfully"))
-});
 export {
   registerUser,
   loginUser,

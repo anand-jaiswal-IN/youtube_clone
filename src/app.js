@@ -10,7 +10,7 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json({ limit: '20kb' }));
+app.use(express.json({ limit: '50kb' }));
 app.use(express.urlencoded({ extended: true, limit: '20kb' }));
 app.use(express.static('public'));
 app.use(cookieParser());
@@ -18,8 +18,13 @@ app.use(cookieParser());
 //routes import
 import userRouter from './routes/user.routes.js';
 import channelRouter from './routes/channel.routes.js';
+import adminRouter from './routes/admin.routes.js';
 
 // routes declaration
+
+app.use('/api/v1/admin', adminRouter);
+
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/channel', channelRouter);
+
 export default app;

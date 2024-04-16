@@ -32,11 +32,11 @@ export const videoSchema = new mongoose.Schema(
       type: String,
     },
     category: {
-      type: [String],
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Category' }],
       required: true,
     },
     sub_category: {
-      type: [String],
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SubCategory' }],
     },
     views: {
       type: Number,

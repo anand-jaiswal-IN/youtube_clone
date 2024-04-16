@@ -22,8 +22,9 @@ const userSchema = new mongoose.Schema(
     bio: {
       type: String,
       default: '',
+      trim:true,
       min: 10,
-      max: 100,
+      max: 200,
     },
     gender: {
       type: String,
@@ -63,10 +64,6 @@ const userSchema = new mongoose.Schema(
     avatar: {
       type: String, // cloudinary image url,
       default: 'https://avatar.iran.liara.run/public/boy?username=user',
-    },
-    coverImg: {
-      type: String, // cloudinary image url
-      default: 'https://placehold.co/2560x1440.png',
     },
     isVerified: {
       type: Boolean,
