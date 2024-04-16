@@ -28,4 +28,13 @@ function validatePassword(password) {
   // Password meets all criteria
   return true;
 }
-export {validateEmail, validatePassword}
+function isValidName(name) {
+  const nameRegex = /^[a-zA-Z]{3,20}$/;
+  return nameRegex.test(name);
+}
+function isValidUsername(username) {
+  const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+  return usernameRegex.test(username);
+}
+
+export { validateEmail, validatePassword, isValidName, isValidUsername };

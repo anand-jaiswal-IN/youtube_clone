@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import mongooseAggregatePaginate from 'mongoose-aggregate-paginate-v2';
 
-const videoSchema = new mongoose.Schema(
+export const videoSchema = new mongoose.Schema(
   {
     title: {
       type: String,
@@ -44,7 +44,7 @@ const videoSchema = new mongoose.Schema(
     },
     owner: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'Channel',
     },
   },
   { timestamps: true }

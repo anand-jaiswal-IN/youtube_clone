@@ -4,24 +4,31 @@ import jwt from 'jsonwebtoken';
 
 const userSchema = new mongoose.Schema(
   {
-    name: {
-      type: {
-        firstName: {
-          type: String,
-          default: 'Buddy',
-          lowercase: true,
-          trim: true,
-          min: 3,
-          max: 20,
-        },
-        lastName: {
-          type: String,
-          lowercase: true,
-          trim: true,
-          min: 3,
-          max: 20,
-        },
-      },
+    firstName: {
+      type: String,
+      default: 'Buddy',
+      lowercase: true,
+      trim: true,
+      min: 3,
+      max: 20,
+    },
+    lastName: {
+      type: String,
+      lowercase: true,
+      trim: true,
+      min: 3,
+      max: 20,
+    },
+    bio: {
+      type: String,
+      default: '',
+      min: 10,
+      max: 100,
+    },
+    gender: {
+      type: String,
+      enum: ['M', 'F', 'O'],
+      default: 'O',
     },
     username: {
       type: String,
@@ -75,6 +82,9 @@ userSchema.pre('save', async function (next) {
   }
   next();
 });
+userSchema.methods.fullName = function () {
+  return `${this.firstName} ${this.lastName}`;
+};
 userSchema.methods.isPasswordCorrect = async function (password) {
   return await bcryptjs.compare(password, this.password);
 };

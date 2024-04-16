@@ -1,6 +1,11 @@
 import jwt from 'jsonwebtoken';
 import asyncHandler from '../utils/asyncHandler.js';
-import { validateEmail, validatePassword } from '../utils/validation.js';
+import {
+  validateEmail,
+  validatePassword,
+  isValidName,
+  isValidUsername,
+} from '../utils/validation.js';
 import ApiError from '../utils/ApiError.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import User from '../models/user.models.js';
@@ -78,7 +83,6 @@ const registerUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, createdUser, 'User created Successfully'));
 });
 const loginUser = asyncHandler(async (req, res) => {
-  console.log(req.body);
   if (!req.body.usernameOrEmail || !req.body.password) {
     throw new ApiError(400, 'Bad Request, Fields are required.');
   }
@@ -172,4 +176,167 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     throw new ApiError(401, error?.message || 'Invalid Refresh Token');
   }
 });
-export { registerUser, loginUser, logoutUser, refreshAccessToken };
+const updateUserDetail = asyncHandler(async (req, res) => {
+  const { firstName, lastName, gender, bio } = req.body;
+  if (!firstName || !lastName || !gender || !bio) {
+    throw new ApiError(400, 'Bad Request. Fields are required');
+  }
+  if (!isValidName(firstName) || !isValidName(lastName)) {
+    throw new ApiError(400, 'Firstname or Lastname is not valid');
+  }
+  if (!['M', 'F', 'O'].includes(gender)) {
+    throw new ApiError(400, 'Gender is not Correct');
+  }
+  if (bio.length() < 6) {
+    throw new ApiError(400, 'Bio is Too Short');
+  }
+  if (!bio.length() > 100) {
+    throw new ApiError(400, 'Bio is Too Long');
+  }
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: [{ firstName, lastName, gender, bio }],
+    },
+    { new: true }
+  ).select('-password -refreshToken');
+  return res
+    .status(202)
+    .json(new ApiResponse(202, user, 'User updated successfully'));
+});
+const updateUsername = asyncHandler(async (req, res) => {
+  const { newUsername, password } = req.body;
+  if (!newUsername || !password) {
+    throw new ApiError(400, 'Request with correct credentials');
+  }
+
+  if (!isValidUsername(newUsername)) {
+    throw new ApiError(400, 'Username is NOT Valid');
+  }
+
+  let user = await User.findById(req?.user?._id);
+  const isPasswordCorrect = user.isPasswordCorrect(password);
+  if (!isPasswordCorrect) {
+    throw new ApiError(401, 'Password is wrong');
+  }
+
+  user.username = newUsername;
+  user = await user.save({ validateBeforeSave: false });
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, user, 'Username updated Successfully'));
+});
+const updatePassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+  if ((!oldPassword, !newPassword)) {
+    throw new ApiError(400, 'Bad Request. Fields are required.');
+  }
+  let user = await User.findById(req?.user?._id);
+  if (!user.isPasswordCorrect(oldPassword)) {
+    throw new ApiError(401, 'Old password is wrong');
+  }
+  if (!validatePassword(newPassword)) {
+    throw new ApiError(406, 'Invalid Password');
+  }
+  user.password = newPassword;
+  user = await user.save({ validateBeforeSave: false });
+
+  res.status(200).json(new ApiResponse(200, user, 'User password changed'));
+});
+const updateAvatar = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    throw new ApiError(400, 'Bad Request. Field is required');
+  }
+  if (req.file.size > 100 * 1000) {
+    // if file is more than 100kb
+    throw new ApiError(
+      400,
+      'Avatar have exceed the file limit. Required less than 100kb'
+    );
+  }
+  const avatar = await uploadFile(req.file?.path);
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    { $set: [{ avatar: avatar.url }] },
+    { new: true }
+  ).select('-password -refreshToken');
+  res
+    .status(200)
+    .json(new ApiResponse(202, user, 'Avatar updated successfully'));
+});
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+  const { username } = req.params;
+  username = username?.trim();
+  if (!username) {
+    new ApiError(400, 'username is missing');
+  }
+
+  const channel = await User.aggregate([
+    {
+      $match: { username: username?.toLowerCase() },
+    },
+    {
+      $lookup: {
+        from: 'subscriptions',
+        localField: '_id',
+        foreignField: 'channel',
+        as: 'subscribedTo',
+      },
+    },
+    {
+      $lookup: {
+        from: 'subscriptions',
+        localField: '_id',
+        foreignField: 'subscriber',
+        as: 'subscribers',
+      },
+    },
+    {
+      $addFields: {
+        subscriberCount: {
+          $size: '$subscribers',
+        },
+        subscribedToCount: {
+          $size: '$subscribedTo',
+        },
+        isSubscribed: {
+          $cond: {
+            if: { $in: [req.user?._id, '$subscribers.subscriber'] },
+            then: true,
+            else: false,
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        firstName: 1,
+        lastName: 1,
+        bio: 1,
+        gender: 1,
+        username: 1,
+        email: 1,
+        avatar: 1,
+        coverImg: 1,
+        subscriberCount: 1,
+        subscribedToCount: 1,
+        isSubscribed: 1,
+      },
+    },
+  ]);
+  if(!channel?.length){
+    throw new ApiError(404, "Channel doesn't exists")
+  }
+  res.status(200).json(new ApiResponse(200, channel[0], "User channel fetched successfully"))
+});
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  refreshAccessToken,
+  updateUserDetail,
+  updateUsername,
+  updatePassword,
+  updateAvatar,
+};
