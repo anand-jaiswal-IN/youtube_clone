@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import upload from '../middlewares/multer.middleware..js';
+import upload from '../middlewares/multer.middleware.js';
 import verifyJWT from '../middlewares/auth.middleware.js';
 import {
   registerUser,
@@ -13,6 +13,7 @@ import {
   getUserProfile,
   sendOTPtoVerify,
   verifyUserByOTP,
+  getUserWatchHistory
 } from '../controllers/user.controller.js';
 
 const router = Router();
@@ -33,4 +34,5 @@ router.route('/update/details').post(updateUserDetail);
 router.route('/update/username').post(updateUsername);
 router.route('/update/password').post(updatePassword);
 router.route('/update/avatar').post(upload.single('avatar'), updateAvatar);
+router.route('/your-watch-history').get(getUserWatchHistory)
 export default router;

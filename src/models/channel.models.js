@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import { videoSchema } from './video.models.js';
 const channelSchema = new mongoose.Schema(
   {
     name: {
@@ -28,7 +27,6 @@ const channelSchema = new mongoose.Schema(
       unique: true,
       required: true,
     },
-    videos: [videoSchema],
   },
   { timestamps: true }
 );

@@ -1,25 +1,25 @@
 import mongoose from 'mongoose';
 import mongooseAggregatePaginate from 'mongoose-aggregate-paginate-v2';
 
-export const videoSchema = new mongoose.Schema(
+const videoSchema = new mongoose.Schema(
   {
     title: {
       type: String,
-      required: [true, 'Title is required'],
+      required: true,
       trim: true,
       min: 3,
       max: 70,
     },
     description: {
       type: String,
-      required: [true, 'Description is required'],
+      required: true,
       trim: true,
-      min: 3,
+      min: 10,
       max: 2000,
     },
     videoFile: {
       type: String,
-      required: [true, 'Video file is required'],
+      required: true,
     },
     thumbnail: {
       type: String,
@@ -39,8 +39,7 @@ export const videoSchema = new mongoose.Schema(
       type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SubCategory' }],
     },
     views: {
-      type: Number,
-      default: 0,
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     },
     owner: {
       type: mongoose.Schema.Types.ObjectId,

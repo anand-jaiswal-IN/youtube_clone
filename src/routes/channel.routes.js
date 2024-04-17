@@ -11,5 +11,4 @@ router.use(verifyJWT);
 router.route("/:username").get(getUserChannelProfile)
 router.route("/create").post(createChannel)
 router.route("/subscribe/:channelID").get(subscribeToChannel);
-
 export default router;

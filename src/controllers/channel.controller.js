@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import User from '../models/user.models.js';
 import Channel from '../models/channel.models.js';
 import Subscription from '../models/subscription.models.js';
@@ -67,10 +68,21 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
       },
     },
     {
+      $lookup: {
+        from: 'videos',
+        localField: '_id',
+        foreignField: 'owner',
+        as: 'videos',
+      },
+    },
+    {
       $addFields: {
         subscriberCount: {
           $size: '$subscribers',
         },
+
+        videosCount: { $size: '$videos' },
+
         isSubscribed: {
           // subscribers = [{subcriber : user1}, {subcriber : user2}, {subcriber : user3}]
           $cond: {
@@ -96,6 +108,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         isSubscribed: 1,
         videoCount: 1,
         owner: 1,
+        videos: 1,
       },
     },
   ]);
@@ -132,4 +145,46 @@ const subscribeToChannel = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, channel, 'Channel subscribed successfully'));
 });
-export { createChannel, getUserChannelProfile, subscribeToChannel };
+const getChannelVideos = asyncHandler(async (req, res) => {
+  const channel = await Channel.findOne({ owner: req.user?._id });
+
+  if (!channel) {
+    throw new ApiError(400, 'Channel does not exits');
+  }
+  const channelVideos = await Channel.aggregate([
+    {
+      $match: { _id: new mongoose.Schema.ObjectId(channel._id) },
+    },
+    {
+      $lookup: {
+        from: 'videos',
+        localfield: '_id',
+        foreignField: 'owner',
+        as: 'videos',
+      },
+    },
+    {
+      $addFields: {
+        videosCount: { $size: '$videos' },
+      },
+    },
+    {
+      $project: {
+        name: 1,
+        videoCount: 1,
+        videos: 1,
+      },
+    },
+  ]);
+  res
+    .status(200)
+    .json(
+      new ApiResponse(200, channelVideos, 'Channel Videos Fetched Successfully')
+    );
+});
+export {
+  createChannel,
+  getUserChannelProfile,
+  subscribeToChannel,
+  // getChannelVideos,
+};

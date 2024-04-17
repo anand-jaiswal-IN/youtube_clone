@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import asyncHandler from '../utils/asyncHandler.js';
 import {
   validateEmail,
@@ -152,8 +153,8 @@ const verifyUserByOTP = asyncHandler(async (req, res) => {
 
   const userOtp = await UserOtp.findOne({ user: req.user?._id });
 
-  if(!userOtp){
-    throw new ApiError(409, "OTP not Generated for you")
+  if (!userOtp) {
+    throw new ApiError(409, 'OTP not Generated for you');
   }
   if (!(userOtp.otp == otp)) {
     throw new ApiError(406, 'Wrong OTP found');
@@ -330,6 +331,50 @@ const getUserProfile = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, user, 'User profile fetched successfully'));
 });
+const getUserWatchHistory = asyncHandler(async (req, res) => {
+  const user = await User.findById(req?.user?._id);
+  if (!user) {
+    throw new ApiError(400, 'User does not exists');
+  }
+  const watchHistory = await User.aggregate([
+    {
+      $match: {
+        _id: user._id,
+      },
+    },
+    {
+      $lookup: {
+        from: 'videos',
+        as: 'watchHistory', // watchHistory is the list of videos that user has watched
+        pipeline: [
+          {
+            $match: {
+              $expr: { $in: [user._id, '$views'] },
+            },
+          },
+          {
+            $project: {
+              _id: 1,
+              title: 1,
+              videoFile: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $project: {
+        watchHistory: 1,
+        _id: 1,
+        email: 1,
+        username: 1,
+      },
+    },
+  ]);
+  res
+    .status(200)
+    .json(new ApiResponse(200, watchHistory[0], 'WatchHistory Fetched'));
+});
 export {
   registerUser,
   loginUser,
@@ -342,4 +387,5 @@ export {
   getUserProfile,
   sendOTPtoVerify,
   verifyUserByOTP,
+  getUserWatchHistory,
 };
