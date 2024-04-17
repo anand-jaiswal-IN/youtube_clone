@@ -20,7 +20,7 @@ const channelSchema = new mongoose.Schema(
     },
     category: {
       type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Category' }],
-      required:true
+      required: true,
     },
     owner: {
       type: mongoose.Schema.Types.ObjectId,

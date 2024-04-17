@@ -10,6 +10,9 @@ import ApiError from '../utils/ApiError.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import User from '../models/user.models.js';
 import uploadFile from '../utils/cloudinary.js';
+import { generateRandomOTP } from '../utils/generateRandom.js';
+import UserOtp from '../models/userOtp.js';
+import { sendOTPonEmail } from '../utils/mailService.js';
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -27,7 +30,6 @@ const generateAccessAndRefreshToken = async (userId) => {
     );
   }
 };
-
 const registerUser = asyncHandler(async (req, res) => {
   if (!req.body.username || !req.body.email || !req.body.password) {
     throw new ApiError(400, 'Bad Request, Fields are required.');
@@ -108,6 +110,72 @@ const loginUser = asyncHandler(async (req, res) => {
         'User Logged In Successfully'
       )
     );
+});
+const sendOTPtoVerify = asyncHandler(async (req, res) => {
+  const OTP = generateRandomOTP();
+  const user = await User.findById(req.user._id);
+
+  if (!user) {
+    throw new ApiError(400, 'User not exists');
+  }
+  if (user.isVerified) {
+    throw new ApiError(409, 'Already Verified');
+  }
+  let userOtp = await UserOtp.findOne({ user: user?._id });
+  if (userOtp) {
+    if (userOtp.expiry > Date.now()) {
+      throw new ApiError(406, 'OTP already exists. Check your E-mail');
+    } else {
+      await UserOtp.findOneAndDelete({ user: user?._id });
+    }
+  }
+  const info = await sendOTPonEmail(user.email, OTP);
+  userOtp = await UserOtp.create({
+    user: user._id,
+    otp: OTP,
+    expiry: new Date(Date.now() + 5 * 60 * 1000), // upto 5 minutes
+  });
+  const createdUserOtp = await UserOtp.findById(userOtp._id).select(
+    '-otp -expiry'
+  );
+  res
+    .status(200)
+    .json(
+      new ApiResponse(200, createdUserOtp, 'OTP sent, Check Your Mail service')
+    );
+});
+const verifyUserByOTP = asyncHandler(async (req, res) => {
+  const { otp } = req.body;
+  if (!otp) {
+    throw new ApiError(400, 'OTP not provided');
+  }
+
+  const userOtp = await UserOtp.findOne({ user: req.user?._id });
+
+  if(!userOtp){
+    throw new ApiError(409, "OTP not Generated for you")
+  }
+  if (!(userOtp.otp == otp)) {
+    throw new ApiError(406, 'Wrong OTP found');
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    { $set: { isVerified: true } },
+    { new: true }
+  );
+  await UserOtp.findOneAndDelete({ user: req.user?._id });
+  res.status(202).json(
+    new ApiResponse(
+      202,
+      {
+        username: user.username,
+        email: user.email,
+        isVerified: user.isVerified,
+      },
+      'User verified Successfully'
+    )
+  );
 });
 const logoutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
@@ -222,7 +290,7 @@ const updatePassword = asyncHandler(async (req, res) => {
   if (!(await user.isPasswordCorrect(oldPassword))) {
     throw new ApiError(401, 'Old password is wrong');
   }
-  if ((await user.isPasswordCorrect(newPassword))) {
+  if (await user.isPasswordCorrect(newPassword)) {
     throw new ApiError(400, 'Got same old password');
   }
   if (!validatePassword(newPassword)) {
@@ -254,7 +322,14 @@ const updateAvatar = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(202, user, 'Avatar updated successfully'));
 });
-
+const getUserProfile = asyncHandler(async (req, res) => {
+  const user = await User.findById(req?.user?._id).select(
+    '-password -refreshToken'
+  );
+  res
+    .status(200)
+    .json(new ApiResponse(200, user, 'User profile fetched successfully'));
+});
 export {
   registerUser,
   loginUser,
@@ -264,4 +339,7 @@ export {
   updateUsername,
   updatePassword,
   updateAvatar,
+  getUserProfile,
+  sendOTPtoVerify,
+  verifyUserByOTP,
 };

@@ -1,5 +1,6 @@
 import User from '../models/user.models.js';
 import Channel from '../models/channel.models.js';
+import Subscription from '../models/subscription.models.js';
 import Category from '../models/category.models.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import ApiError from '../utils/ApiError.js';
@@ -48,10 +49,6 @@ const createChannel = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, channel, 'Channel Created Successfully'));
 });
 const getUserChannelProfile = asyncHandler(async (req, res) => {
-  if (!req.path.username) {
-    new ApiError(400, 'username is missing');
-  }
-
   const user = await User.findOne({ username: req.params.username });
   if (!user) {
     throw new ApiError(400, 'User does not exists');
@@ -65,7 +62,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
       $lookup: {
         from: 'subscriptions',
         localField: '_id',
-        foreignField: 'subscriber',
+        foreignField: 'channel',
         as: 'subscribers',
       },
     },
@@ -75,8 +72,11 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
           $size: '$subscribers',
         },
         isSubscribed: {
+          // subscribers = [{subcriber : user1}, {subcriber : user2}, {subcriber : user3}]
           $cond: {
-            if: { $in: [user?._id, '$subscribers.subscriber'] },
+            if: {
+              $in: [req.user?._id, '$subscribers.subscriber'],
+            },
             then: true,
             else: false,
           },
@@ -95,15 +95,41 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         subscriberCount: 1,
         isSubscribed: 1,
         videoCount: 1,
+        owner: 1,
       },
     },
   ]);
-  if (!channel) {
+  if (!(channel.length > 0)) {
     throw new ApiError(404, "Channel doesn't exists");
   }
-  res.status(200).json(
-    new ApiResponse(200, channel[0], 'User channel fetched successfully')
-    // new ApiResponse(200, channel, 'User channel fetched successfully')
-  );
+  res
+    .status(200)
+    .json(
+      new ApiResponse(200, channel[0], 'User channel fetched successfully')
+    );
 });
-export { createChannel, getUserChannelProfile };
+const subscribeToChannel = asyncHandler(async (req, res) => {
+  const user = await User.findById(req?.user?._id);
+  if (!user) {
+    throw new ApiError(400, 'User does not exists');
+  }
+  const channel = await Channel.findById(req.params.channelID);
+  if (!channel) {
+    throw new ApiError(400, 'Channel does not exists');
+  }
+  if (
+    await Subscription.findOne({
+      $and: [{ subscriber: user._id }, { channel: channel._id }],
+    })
+  ) {
+    throw new ApiError(400, 'Already subscribed to this channel');
+  }
+  await Subscription.create({
+    subscriber: user._id,
+    channel: channel._id,
+  });
+  res
+    .status(200)
+    .json(new ApiResponse(200, channel, 'Channel subscribed successfully'));
+});
+export { createChannel, getUserChannelProfile, subscribeToChannel };
