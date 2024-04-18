@@ -29,7 +29,8 @@ const videoSchema = new mongoose.Schema(
       default: false,
     },
     duration: {
-      type: String,
+      type: Number,
+      required: true,
     },
     category: {
       type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Category' }],
@@ -44,10 +45,17 @@ const videoSchema = new mongoose.Schema(
     owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Channel',
+      required:true
     },
   },
   { timestamps: true }
 );
 videoSchema.plugin(mongooseAggregatePaginate);
+videoSchema.methods.isVideoViewed = async function (user) {
+  return this.views.includes(user?._id);
+};
+videoSchema.methods.hasItsChannel = async function (channel) {
+  return this.owner.equals(channel._id)
+};
 const Video = mongoose.model('Video', videoSchema);
 export default Video;
